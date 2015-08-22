@@ -1,0 +1,91 @@
+CREATE EXTERNAL TABLE  business_yelp (business_id string, name string,full_address string,city string, state string, categories array<string>,
+latitude double,longitude double )ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe';
+   
+	   load data inpath '/user/yelpdata/yelp_academic_dataset_business.json' into table business_yelp;
+	   load data inpath 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_business.json' into table business_yelp;
+	   
+	   ALTER TABLE business_yelp SET SERDEPROPERTIES("ignore.malformed.json" ="true");
+	   
+	   INSERT OVERWRITE DIRECTORY 'yelp_out/bus' select name, latitude, longitude, business_id from business;
+
+	   bin/hdfs dfs -copyFromLocal /home/ron/Documents/yelpdata/yelp_academic_dataset_user.json /user/yelpdata
+
+	   
+	   
+	   select d.count, d.city, d.name, d.longitude, d.latitude from(select distinct B.name, B.city, C.checkin_info['9-1'] as count,
+	   B.longitude, B.latitude, B.business_id from business_yelp B FULL OUTER JOIN checkin_yelp C on(B.business_id = C.business_id) ) d
+	   where name = 'Starbucks' and city='Phoenix' and count < 5;
+
+	   
+	   Create external table checkin_yelp (business_id string,checkin_info map<string,int> )	
+	   ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe';
+	   
+	   load data inpath '/user/yelpdata/yelp_academic_dataset_checkin.json' into table checkin_yelp;
+	    load data inpath 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_checkin.json' into table checkin_yelp;
+	   
+	 Create table review_yelp (
+	 business_id string,user_id string,stars float,date string,votes map<string,int>)    
+     Row Format SERDE 'org.openx.data.jsonserde.JsonSerDe'; 
+	   
+	   load data inpath '/user/yelpdata/yelp_academic_dataset_review.json' into table review_yelp;
+	   load data inpath 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_review.json' into table review_yelp;
+	   
+	   select business_id,SUM(votes['useful']) as voteuseful,SUM(votes['cool']) as votecool, SUM(votes['funny']) as votesfunny from review_yelp group by business_id ;
+
+	   select business_id,SUM(votes['useful']) as vote from review_yelp group by business_id limit 5;
+	   
+	   select business_id, votes['useful'] as vote from review_yelp group by business_id ;
+
+	   
+	   
+	Create table user_yelp (     
+	user_id string,name string,review_count int,average_stars float,votes map<string,int>,friends array<string>,
+	elite array<string>,yelping_since string,complements map<string,int>,fans int)
+	Row Format SERDE 'org.openx.data.jsonserde.JsonSerDe'; 
+	   
+	   load data inpath '/user/yelpdata/yelp_academic_dataset_user.json' into table user_yelp;
+	   
+	   select user_id,name,elite from user_yelp group by elite; 
+	   
+	    select user_id,name,elite from user_yelp order by elite desc; 
+		
+		
+		select COUNT(*),yelping_since from user_yelp group by yelping_since; 
+	   
+	   JAVA_HOME=/usr/local/lib/jdk8
+PATH=$PATH:$HOME/bin:$JAVA_HOME/bin
+export JAVA_HOME
+export JRE_HOME
+export PATH
+
+# Set Hadoop-related environment variables
+export HADOOP_HOME=/usr/local/lib/hadoop/hadoop-2.4.0
+export PATH=$PATH:$HADOOP_HOME/bin
+
+
+export HBASE_HOME=/usr/local/lib/hbase
+export PATH=$PATH:$HBASE_HOME/bin
+
+export PIG_HOME=/usr/local/lib/pig/pig-0.13.0
+export PATH=$PATH:$PIG_HOME/bin
+
+export JAQL_HOME=/usr/local/lib/jaql-0.5.1
+
+export HIVE_HOME=/usr/local/lib/hive-0.13.0
+export PATH=$PATH:$HIVE_HOME/bin
+export HIVE_CLASSPATH=$HIVE_HOME/lib
+
+Create table business_yelp1 (                                                                            
+     business_id string,
+	 name string, 
+     city string,                                                                                            
+     state string,                                                                                           
+     stars float,                                                                                            
+     categories array<string>,                                                                               
+     open boolean)                                                                                           
+     Row Format SERDE 'org.openx.data.jsonserde.JsonSerDe';           
+
+
+
+file:///usr/local/lib/hive-0.13.0/lib/hive-hbase-handler-0.13.1.jar,file:///usr/local/lib/hive-0.13.0/lib/hbase-client-0.98.3-hadoop2.jar,file:///usr/local/lib/hive-0.13.0/lib/hbase-common-0.98.3-hadoop2.jar,file:///usr/local/lib/hive-0.13.0/lib/hbase-protocol-0.98.3-hadoop2.jar,file:///usr/local/lib/hive-0.13.0/lib/hbase-server-0.98.3-hadoop2.jar,file:///usr/local/lib/hive-0.13.0/lib/htrace-core-2.04.jar,file:///usr/local/lib/hive-0.13.0/lib/zookeeper-3.4.5.jar,file:///usr/local/lib/hive-0.13.0/lib/protobuf-java-2.5.0.jar,file:///usr/local/lib/hive-0.13.0/lib/guava-11.0.2.jar,file:///usr/local/lib/hive-0.13.0/lib/hive-0.13.0-udf.jar,file:///usr/local/lib/hive-0.13.0/lib/hbase-hadoop-compat-0.98.3-hadoop2.jar
+	 

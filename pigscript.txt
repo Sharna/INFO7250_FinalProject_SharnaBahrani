@@ -1,0 +1,85 @@
+
+// For each state and city count stars 
+a = LOAD '/home/ron/Documents/yelp_csv_dataset/yelp_business_data_noaddress.csv' using PigStorage(',') as (business_id,city,state,stars:float,review_count:int,name);
+b = load 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_business.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+genstate = foreach b generate $0#'state' as state, $0#'city' as city, $0#'stars' as stars,$0#'name' as name;
+group_by_state_and_city_stars = group genstate by (state,city,stars);  
+star_count = foreach group_by_state_and_city_stars generate group as state,COUNT(genstate.stars) as star_count,genstate.name;
+
+//for each state and city count review_count
+group_by_state_and_city = group a by (state,city);
+reviewcount = foreach group_by_state_and_city generate group as state_city, SUM(a.review_count) as review_count;    
+ordered = order reviewcount by review_count desc;     
+
+
+//review count by a particular user_id	
+c = load 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_user.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+countrev = foreach a generate $0#'user_id' as userid, $0#'review_count' as (revcount:double),$0#'name' as name;
+useridgrp = group countrev by userid;
+counter = foreach useridgrp generate group as userid1, SUM(countrev.revcount) as  counted;
+orderrevcount = order counter by counted desc;
+limit15 = limit orderrevcount 15;
+
+groupb  = foreach c generate $0#'user_id' as userid, $0#'name' as name;
+joined = join counter by userid, groupb by userid;
+
+//count top 25 tips by a user
+a = load 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_tip.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+a = load '/home/ron/Documents/yelpdata/yelp_academic_dataset_tip.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+red = foreach a generate $0#'text' as text, $0#'user_id' as userid ,$0#'business_id' as businessid;
+group_by_user = group red by (userid,businessid);   
+tipcount = foreach group_by_user generate group as tcount, COUNT(red) as tcounts;
+orderbyre = order tipcount by tcounts desc;   
+top25 = limit orderbyre 25;
+
+b = load '/home/ron/Documents/yelpdata/yelp_academic_dataset_business.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+b = load 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_business.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+joinbus = foreach b generate $0#'business_id' as businessid, $0#'name' as name;
+joinname = join joinbus by joinbus.businessid, tipcount by $1;
+orderbyre = order joinname by tcounts desc;   
+top25 = limit orderbyre 25;
+
+
+//count top 15 likes by a user
+genuser = foreach a generate $0#'user_id' as userid, $0#'likes' as likes; 
+groupbyuser = group genuser by userid; 
+countlikes = foreach groupbyuser generate group as likesct, COUNT(genuser.likes) as likes1;
+orderdesc = order countlikes by likes1 desc; 
+top15 = limit orderdesc 15;  
+
+c = load '/home/ron/Documents/yelpdata/yelp_academic_dataset_user.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+c = load 'hdfs://master:9000/user/yelpdata/yelp_academic_dataset_user.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+genu = foreach c generate $0#'user_id' as userid, $0#'name' as name;
+joinbyname = join genu by userid, top15 by likesct;
+
+//
+b = load '/home/ron/Documents/yelpdata/yelp_academic_dataset_business.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+joinbus = foreach b generate $0#'business_id' as businessid;
+
+d = load '/home/ron/Documents/yelpdata/yelp_academic_dataset_review.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+genuser1 = foreach d generate $0#'business_id' as businessid,$0#'user_id' as userid, $0#'stars' as stars ;
+
+
+a = load '/home/ron/Documents/yelpdata/yelp_academic_dataset_tip.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+genuser1 = foreach a generate $0#'business_id' as businessid,$0#'user_id' as userid, $0#'likes' as likes ;
+joinforlikes = join joinbus by businessid, genuser1 by businessid;
+
+
+d = load '/home/ron/Documents/yelp_phoenix_academic_dataset 2/yelp_academic_dataset_review.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+ buss = foreach d generate $0#'user_id' as userid,$0#'business_id'as businessid;
+
+ b = load '/home/ron/Documents/yelp_phoenix_academic_dataset 2/yelp_academic_dataset_business.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+
+ c = load '/home/ron/Documents/yelp_phoenix_academic_dataset 2/yelp_academic_dataset_user.json' using com.twitter.elephantbird.pig.load.JsonLoader('-nestedLoad');
+ onlyuser = foreach c generate $0#'user_id' as userid;
+ 
+ e = load '/home/ron/Documents/yelp_phoenix_academic_dataset 2/review.csv' using PigStorage(',');
+ 
+ p = load '/home/ron/Documents/csv/business.csv' using PigStorage(',');
+ q = load '/home/ron/Documents/csv/review.csv'  using PigStorage(',');
+ rev = foreach q generate $0 as userid, $1 as businessid;
+
+ 
+ r = load '/home/ron/Documents/csv/userid.csv' using PigStorage(',');
+
+  
